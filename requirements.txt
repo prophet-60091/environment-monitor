@@ -5,4 +5,4 @@ Pillow
 adafruit-circuitpython-sgp30
 influxdb
 p7zip-full
-# https://www.waveshare.com/w/upload/6/6c/Sense-HAT-B-Demo.7z
+# wget https://www.waveshare.com/w/upload/6/6c/Sense-HAT-B-Demo.7z
