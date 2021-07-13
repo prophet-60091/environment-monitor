@@ -6,10 +6,12 @@ import adafruit_sgp30
 import ctypes
 from influxdb import InfluxDBClient
 
-
+# setup the waveshare hat
 class SHTC3:
     def __init__(self):
-        self.dll = ctypes.CDLL("./SHTC3.so")  # this needs to be the path to the .so file
+        self.dll = ctypes.CDLL(
+            "./SHTC3.so"
+        )  # this needs to be the path to the .so file
         init = self.dll.init
         init.restype = ctypes.c_int
         init.argtypes = [ctypes.c_void_p]
@@ -31,25 +33,23 @@ class SHTC3:
 shtc3 = SHTC3()
 temperature = round(shtc3.SHTC3_Read_Temperature())
 humidity = round(shtc3.SHTC3_Read_Humidity())
-
 i2c = busio.I2C(board.SCL, board.SDA, frequency=100000)
 
+# Setup the SGP30 sensor
 # Create library object on our I2C port
 sgp30 = adafruit_sgp30.Adafruit_SGP30(i2c)
-
 sgp30.iaq_init()
 sgp30.set_iaq_baseline(0x8973, 0x8AAE)
-
 eco2 = 0
 
+
+# Setup the gpio pins for the CO2 traffic light
 GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
 
 green = 18
 yellow = 27
 red = 22
-
-# numbering scheme
-GPIO.setmode(GPIO.BCM)
 
 # set pins to out
 GPIO.setup(red, GPIO.OUT)
@@ -61,9 +61,13 @@ GPIO.output(red, False)
 GPIO.output(yellow, False)
 GPIO.output(green, False)
 
+
+# the final loop, will run until interrupted
 while True:
     eco2 = sgp30.eCO2
-    print(f"eco2 = {eco2}")
+    print(
+        f"eco2 = {eco2}"
+    )  # isn't needed, but visually will tell you if script is running
 
     if eco2 <= 1000:
         GPIO.output(green, True)
@@ -82,12 +86,10 @@ while True:
 
     time.sleep(1)
 
-    client = InfluxDBClient(host='192.168.178.18',
-                            port='8086',
-                            username='livingroom',
-                            password='livingroom')
+    # send the data to influxdb
+    client = InfluxDBClient(
+        host="192.168.178.18", port="8086", username="livingroom", password="livingroom"
+    )
     line = f"environments,room=livingroom temperature={temperature},humidity={humidity},eco2={eco2}"
-    client.write([line], {'db': 'environments'}, 204, 'line')
+    client.write([line], {"db": "environments"}, 204, "line")
     client.close()
-
-
