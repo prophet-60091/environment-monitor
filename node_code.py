@@ -10,7 +10,7 @@ from influxdb import InfluxDBClient
 class SHTC3:
     def __init__(self):
         self.dll = ctypes.CDLL(
-            "./SHTC3.so"
+            "/home/pi/code/environment-monitor/SHTC3.so"
         )  # this needs to be the path to the .so file
         init = self.dll.init
         init.restype = ctypes.c_int
