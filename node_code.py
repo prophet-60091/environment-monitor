@@ -5,12 +5,24 @@ import busio
 import adafruit_sgp30
 import ctypes
 from influxdb import InfluxDBClient
+import traceback
+import logging
+import sys
+
+sys.tracebacklimit = 0  # System error handling
+
+# Create logger
+start_time = time.time()
+logging.basicConfig(
+    filename="home/pi/code/environment-monitor/node_code.log", level=logging.ERROR
+)
+logger = logging.getLogger()
 
 # setup the waveshare hat
 class SHTC3:
     def __init__(self):
         self.dll = ctypes.CDLL(
-            "./SHTC3.so"
+            "/home/pi/code/environment-monitor/SHTC3.so"
         )  # this needs to be the path to the .so file
         init = self.dll.init
         init.restype = ctypes.c_int
@@ -64,32 +76,42 @@ GPIO.output(green, False)
 
 # the final loop, will run until interrupted
 while True:
-    eco2 = sgp30.eCO2
-    print(
-        f"eco2 = {eco2}"
-    )  # isn't needed, but visually will tell you if script is running
+    try:
+        eco2 = sgp30.eCO2
+        print(
+            f"eco2 = {eco2}"
+        )  # isn't needed, but visually will tell you if script is running
 
-    if eco2 <= 1000:
-        GPIO.output(green, True)
-        GPIO.output(yellow, False)
-        GPIO.output(red, False)
+        if eco2 <= 1000:
+            GPIO.output(green, True)
+            GPIO.output(yellow, False)
+            GPIO.output(red, False)
 
-    if eco2 >= 1001 and eco2 <= 2000:
-        GPIO.output(green, False)
-        GPIO.output(yellow, True)
-        GPIO.output(red, False)
+        if eco2 >= 1001 and eco2 <= 2000:
+            GPIO.output(green, False)
+            GPIO.output(yellow, True)
+            GPIO.output(red, False)
 
-    if eco2 >= 2001:
-        GPIO.output(green, False)
-        GPIO.output(yellow, False)
-        GPIO.output(red, True)
+        if eco2 >= 2001:
+            GPIO.output(green, False)
+            GPIO.output(yellow, False)
+            GPIO.output(red, True)
 
-    time.sleep(1)
+        time.sleep(1)
 
-    # send the data to influxdb
-    client = InfluxDBClient(
-        host="192.168.178.18", port="8086", username="livingroom", password="livingroom"
-    )
-    line = f"environments,room=livingroom temperature={temperature},humidity={humidity},eco2={eco2}"
-    client.write([line], {"db": "environments"}, 204, "line")
-    client.close()
+        # send the data to influxdb
+        client = InfluxDBClient(
+            host="192.168.178.18", port="8086", username="livingroom", password="livingroom"
+        )
+        line = f"environments,room=livingroom temperature={temperature},humidity={humidity},eco2={eco2}"
+        client.write([line], {"db": "environments"}, 204, "line")
+        client.close()
+
+
+    except BaseException:  # will not catch KeyboardInterrupt
+
+        e_str = traceback.format_exc()
+
+        logger.error(e_str)
+
+        raise  # maintains traceback
