@@ -8,6 +8,7 @@ from influxdb import InfluxDBClient
 import traceback
 import logging
 import sys
+import socket
 
 sys.tracebacklimit = 0  # System error handling
 
@@ -42,9 +43,7 @@ class SHTC3:
         return humidity(None)
 
 
-shtc3 = SHTC3()
-temperature = round(shtc3.SHTC3_Read_Temperature())
-humidity = round(shtc3.SHTC3_Read_Humidity())
+# Setup
 i2c = busio.I2C(board.SCL, board.SDA, frequency=100000)
 
 # Setup the SGP30 sensor
@@ -73,45 +72,54 @@ GPIO.output(red, False)
 GPIO.output(yellow, False)
 GPIO.output(green, False)
 
-
+system_hostname = socket.gethostname()
 # the final loop, will run until interrupted
-while True:
-    try:
-        eco2 = sgp30.eCO2
-        print(
-            f"eco2 = {eco2}"
-        )  # isn't needed, but visually will tell you if script is running
+def main():
 
-        if eco2 <= 1000:
-            GPIO.output(green, True)
-            GPIO.output(yellow, False)
-            GPIO.output(red, False)
+    while True:
+        shtc3 = SHTC3()
+        temperature = round(shtc3.SHTC3_Read_Temperature(), 2)
+        humidity = round(shtc3.SHTC3_Read_Humidity(), 2)
 
-        if eco2 >= 1001 and eco2 <= 2000:
-            GPIO.output(green, False)
-            GPIO.output(yellow, True)
-            GPIO.output(red, False)
+        try:
+            eco2 = sgp30.eCO2
+            print(
+                f"eco2 = {eco2}"
+            )  # isn't needed, but visually will tell you if script is running
 
-        if eco2 >= 2001:
-            GPIO.output(green, False)
-            GPIO.output(yellow, False)
-            GPIO.output(red, True)
+            if eco2 <= 1000:
+                GPIO.output(green, True)
+                GPIO.output(yellow, False)
+                GPIO.output(red, False)
 
-        time.sleep(1)
+            if eco2 >= 1001 and eco2 <= 2000:
+                GPIO.output(green, False)
+                GPIO.output(yellow, True)
+                GPIO.output(red, False)
 
-        # send the data to influxdb
-        client = InfluxDBClient(
-            host="192.168.178.18", port="8086", username="livingroom", password="livingroom"
-        )
-        line = f"environments,room=livingroom temperature={temperature},humidity={humidity},eco2={eco2}"
-        client.write([line], {"db": "environments"}, 204, "line")
-        client.close()
+            if eco2 >= 2001:
+                GPIO.output(green, False)
+                GPIO.output(yellow, False)
+                GPIO.output(red, True)
+
+            time.sleep(5)
+
+            # send the data to influxdb
+            client = InfluxDBClient(
+                host="192.168.178.18", port="8086", username=f"{system_hostname}", password=f"{system_hostname}"
+            )
+            line = f"environments,room={system_hostname} temperature={temperature},humidity={humidity},eco2={eco2}"
+            client.write([line], {"db": "environments"}, 204, "line")
+            client.close()
 
 
-    except BaseException:  # will not catch KeyboardInterrupt
+        except BaseException:  # will not catch KeyboardInterrupt
 
-        e_str = traceback.format_exc()
+            e_str = traceback.format_exc()
 
-        logger.error(e_str)
+            logger.error(e_str)
 
-        raise  # maintains traceback
+            raise  # maintains traceback
+
+if __name__ == "__main__":
+    main()
