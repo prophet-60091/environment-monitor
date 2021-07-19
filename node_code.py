@@ -8,6 +8,7 @@ from influxdb import InfluxDBClient
 import traceback
 import logging
 import sys
+import socket
 
 sys.tracebacklimit = 0  # System error handling
 
@@ -71,7 +72,7 @@ GPIO.output(red, False)
 GPIO.output(yellow, False)
 GPIO.output(green, False)
 
-
+system_hostname = socket.gethostname()
 # the final loop, will run until interrupted
 def main():
 
@@ -105,9 +106,9 @@ def main():
 
             # send the data to influxdb
             client = InfluxDBClient(
-                host="192.168.178.18", port="8086", username="livingroom", password="livingroom"
+                host="192.168.178.18", port="8086", username=f"{system_hostname}", password=f"{system_hostname}"
             )
-            line = f"environments,room=livingroom temperature={temperature},humidity={humidity},eco2={eco2}"
+            line = f"environments,room={system_hostname} temperature={temperature},humidity={humidity},eco2={eco2}"
             client.write([line], {"db": "environments"}, 204, "line")
             client.close()
 
